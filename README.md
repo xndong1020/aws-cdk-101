@@ -46,3 +46,7 @@ cdk bootstrap
 #### Deploy lamdba with dynamoDB
 
 [lamdba with dynamoDB](./02.lambda_with_dynamodb_example.md)
+
+#### ECS Fargate, ALB and Autoscaling
+
+[fargate-alb-autoscaling-example](./03.fargate-alb-autoscaling-example.md)
