@@ -34,5 +34,25 @@ export class HitCounter extends cdk.Construct {
         HITS_TABLE_NAME: table.tableName,
       },
     });
+
+    // grant the lambda role read/write permissions to our table
+    table.grant(this.handler, "dynamodb:UpdateItem", "dynamodb:GetItem");
+
+    // grant the lambda role invoke permissions to the downstream function
+    props.downstream.grantInvoke(this.handler);
+
+    // this.handler.addToRolePolicy(
+    //   new PolicyStatement({
+    //     actions: ["dynamodb:UpdateItem", "dynamodb:GetItem"],
+    //     resources: [table.tableArn],
+    //   })
+    // );
+
+    // this.handler.addToRolePolicy(
+    //   new PolicyStatement({
+    //     actions: ["lambda:InvokeFunction"],
+    //     resources: [props.downstream.functionArn],
+    //   })
+    // );
   }
 }
