@@ -9,6 +9,10 @@ export class CdkWorkshopStack extends cdk.Stack {
 
     // Create a cluster
     const vpc = new ec2.Vpc(this, "Vpc", { maxAzs: 2 });
+    // const vpc = ec2.Vpc.fromLookup(this, "vpc", {
+    //   vpcId: "vpc-f4063593",
+    // });
+
     const cluster = new ecs.Cluster(this, "fargate-service-autoscaling", {
       vpc,
     });
