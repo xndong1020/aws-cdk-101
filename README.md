@@ -31,11 +31,15 @@ npm i @aws-cdk/aws-ec2
 
 #### Bootstrapping an environment
 
-The first time you deploy an AWS CDK app into an environment (account/region), you’ll need to install a “bootstrap stack”. This stack includes resources that are needed for the toolkit’s operation. For example, the stack includes an S3 bucket that is used to store templates and assets during the deployment process.
+The first time you deploy an AWS CDK app into an environment (account/region), you’ll need to install a “bootstrap stack”.
+
+This stack includes resources that are needed for the toolkit’s operation. For example, the stack includes an S3 bucket that is used to store templates and assets during the deployment process.
 
 ```js
 cdk bootstrap
 ```
+
+A `CDKToolkit` stack will be created on AWS Cfn. The CDK Toolkit Stack. It was created by `cdk bootstrap` and manages resources necessary for managing your Cloud Applications with AWS CDK.
 
 ### EXAMPLES
 
