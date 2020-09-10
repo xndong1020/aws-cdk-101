@@ -1,0 +1,152 @@
+import * as cdk from "@aws-cdk/core";
+import * as ec2 from "@aws-cdk/aws-ec2";
+import * as assets from "@aws-cdk/aws-s3-assets";
+import * as elb from "@aws-cdk/aws-elasticloadbalancingv2";
+import * as autoscaling from "@aws-cdk/aws-autoscaling";
+
+import { Role, ServicePrincipal, ManagedPolicy } from "@aws-cdk/aws-iam";
+import { CfnOutput } from "@aws-cdk/core";
+import { AmazonLinuxImage, UserData, SubnetType } from "@aws-cdk/aws-ec2";
+
+//
+// The stack for this demo
+//
+export class VpcAlbAsgStack extends cdk.Stack {
+  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+
+    //
+    // The following JavaScript example defines an directory asset
+    // which is archived as a .zip file
+    // and uploaded to S3 during deployment.
+    //
+    var path = require("path");
+    const asset = new assets.Asset(this, "SampleAsset", {
+      path: path.join(__dirname, "../html"),
+    });
+
+    // Create a VPC with two Azs, each Az will have 1 public and 1 private subnet
+    const vpc = new ec2.Vpc(this, "NewsBlogVPC", {
+      cidr: "10.0.0.0/16",
+      maxAzs: 2,
+      subnetConfiguration: [
+        {
+          subnetType: ec2.SubnetType.PUBLIC,
+          name: "myPublicSubnet",
+          cidrMask: 24,
+        },
+        {
+          subnetType: ec2.SubnetType.PRIVATE,
+          name: "myPrivateSubnet",
+          cidrMask: 24,
+        },
+      ],
+    });
+
+    //
+    // create a security group authorizing inbound traffic on port 80
+    //
+    const demoSecurityGroup = new ec2.SecurityGroup(this, "DemoSecurityGroup", {
+      vpc,
+      description: "Allow access to ec2 instances",
+      allowAllOutbound: true, // Can be set to false
+    });
+    demoSecurityGroup.addIngressRule(
+      ec2.Peer.ipv4("10.0.0.0/16"),
+      ec2.Port.tcp(80),
+      "allow HTTP access from inside VPC"
+    );
+
+    // define the IAM role that will allow the EC2 instance to download web site from S3
+    //
+    const s3Role = new Role(this, "NewsBlogS3Role", {
+      assumedBy: new ServicePrincipal("ec2.amazonaws.com"),
+    });
+    // allow connect instance using Session Manager
+    s3Role.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore")
+    );
+    // allow instance to communicate with s3
+    asset.grantRead(s3Role);
+
+    //
+    // define a user data script to install & launch a web server
+    //
+    const userData = UserData.forLinux();
+    userData.addCommands(
+      "yum install -y nginx",
+      "chkconfig nginx on",
+      "service nginx start"
+    );
+    /**
+     * Asset constructs expose the following deploy-time attributes:
+      s3BucketName - the name of the assets S3 bucket.
+      s3ObjectKey - the S3 object key of the asset file (whether it's a file or a zip archive)
+      s3ObjectUrl - the S3 object URL of the asset (i.e. s3://mybucket/mykey.zip)
+      httpUrl - the S3 HTTP URL of the asset (i.e. https://s3.us-east-1.amazonaws.com/mybucket/mykey.zip)
+     */
+    userData.addCommands(
+      `aws s3 cp s3://${asset.s3BucketName}/${asset.s3ObjectKey} .`,
+      `unzip *.zip`,
+      `/bin/mv /usr/share/nginx/html/index.html /usr/share/nginx/html/index.html.orig`,
+      `/bin/cp -r -n index.html carousel.css /usr/share/nginx/html/`
+    );
+
+    const linuxAMI = new AmazonLinuxImage({
+      generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX,
+      edition: ec2.AmazonLinuxEdition.STANDARD,
+      virtualization: ec2.AmazonLinuxVirt.HVM,
+      storage: ec2.AmazonLinuxStorage.GENERAL_PURPOSE,
+    });
+
+    // Create ALB
+    const alb = new elb.ApplicationLoadBalancer(this, "myALB", {
+      vpc: vpc,
+      internetFacing: true,
+      loadBalancerName: "myALB",
+    });
+    alb.connections.allowFromAnyIpv4(
+      ec2.Port.tcp(80),
+      "Internet access ALB 80"
+    );
+    const listener = alb.addListener("my80", {
+      port: 80,
+      open: true,
+    });
+
+    const asg = new autoscaling.AutoScalingGroup(this, "myASG", {
+      vpc: vpc,
+      instanceType: ec2.InstanceType.of(
+        ec2.InstanceClass.T2,
+        ec2.InstanceSize.MICRO
+      ),
+      vpcSubnets: vpc.selectSubnets({ subnetType: SubnetType.PRIVATE }),
+      machineImage: linuxAMI,
+      keyName: "jumpbox-key",
+      securityGroup: demoSecurityGroup,
+      role: s3Role,
+      userData: userData,
+      desiredCapacity: 2,
+      minCapacity: 2,
+      maxCapacity: 3,
+    });
+
+    asg.connections.allowFrom(
+      alb,
+      ec2.Port.tcp(80),
+      "ALB access 80 port of EC2 in Autoscaling Group"
+    );
+
+    listener.addTargets("addTargetGroup", {
+      port: 80,
+      targets: [asg],
+      healthCheck: {
+        path: "/ping",
+        interval: cdk.Duration.minutes(1),
+      },
+    });
+
+    new CfnOutput(this, "VPC-ID", { value: vpc.vpcId });
+    new CfnOutput(this, "ALB-DNS-NAME", { value: alb.loadBalancerDnsName });
+  }
+}
