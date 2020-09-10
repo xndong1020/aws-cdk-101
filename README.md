@@ -45,12 +45,20 @@ A `CDKToolkit` stack will be created on AWS Cfn. The CDK Toolkit Stack. It was c
 
 #### To create a S3 static hosting
 
-[S3 static hosting Example](./01.static_hosting_example.md)
+[S3 static hosting example](./01.static-hosting-example.md)
 
 #### Deploy lamdba with dynamoDB
 
-[lamdba with dynamoDB](./02.lambda_with_dynamodb_example.md)
+[lamdba with dynamoDB example](./02.lambda-with-dynamodb-example.md)
 
 #### ECS Fargate, ALB and Autoscaling
 
-[fargate-alb-autoscaling-example](./03.fargate-alb-autoscaling-example.md)
+[fargate alb autoscaling example](./03.fargate-alb-autoscaling-example.md)
+
+#### Vpc, create ec2 instances then add to vpc subnets
+
+[vpc ec2 basic example](./04.vpc-ec2-basic.md)
+
+#### Vpc, application loadbalancer, autoscaling group example
+
+[vpc with alb and asg example](./05.vpc-alb-asg.md)
