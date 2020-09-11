@@ -62,3 +62,7 @@ A `CDKToolkit` stack will be created on AWS Cfn. The CDK Toolkit Stack. It was c
 #### Vpc, application loadbalancer, autoscaling group example
 
 [vpc with alb and asg example](./05.vpc-alb-asg.md)
+
+#### Stepfunction with WAIT_FOR_TASK_TOKEN & lambda example
+
+[Stepfunction with WAIT_FOR_TASK_TOKEN & lambda example](./06. stepfunctions-lambda.md)
